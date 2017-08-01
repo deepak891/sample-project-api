@@ -1,0 +1,88 @@
+@RunWith(MockitoJUnitRunner.class)
+public class PortfolioStockControllerTest extends BaseTest {
+
+    private static final String PATH = "/portfolio/stocks";
+    private static boolean areMvcMocksInitialized;
+    private static MockMvc mockMvcFail;
+    private static MockMvc mockMvcSuccess;
+
+    @InjectMocks
+    private static PortfolioStockController controller;
+
+    @Mock
+    private StockService stockService;
+
+    private Stock id1Stock = DummyEntities.getId1Stock();
+    private List<Feature> stockList = Lists.newArrayList(id1Stock);
+
+    @Before
+    public void before() {
+        if (!areMvcMocksInitialized) {
+            mockMvcSuccess = initializeMockMvcSuccess(controller);
+            mockMvcFail = initializeMockMvcFail(controller);
+            areMvcMocksInitialized = true;
+        }
+    }
+
+    @Test
+    public void actionableTestException() throws Exception {
+        when(stockService.allowEdit(anyLong())).thenThrow(new RuntimeException());
+
+        mockMvcFail.perform(get(PATH + Paths.ACTIONABLE + Paths.WRONG_ID))
+                .andExpect(jsonPath(JsonPaths.STATUS_CODE, equalTo(HttpURLConnection.HTTP_INTERNAL_ERROR)))
+                .andExpect(jsonPath(JsonPaths.DATA, nullValue()))
+                .andExpect(jsonPath(JsonPaths.ERROR_MSG,
+                        containsString("Exception while trying to check Stock is editable")))
+        ;
+    }
+
+    @Test
+    public void actionableTestSuccess() throws Exception {
+        when(stockService.allowEdit(anyLong())).thenReturn(true);
+
+        mockMvcSuccess.perform(get(PATH + Paths.ACTIONABLE + "/1"))
+                .andExpect(jsonPath(JsonPaths.DATA, equalTo(true)))
+        ;
+    }
+
+    @Test
+    public void createTestSuccessWithResultTrue() throws Exception {
+        when(stockService.create(Matchers.any(Feature.class))).thenReturn(true);
+        String requestBody = mapper.writeValueAsString(id1Feature);
+
+        mockMvcSuccess.perform(post(PATH)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+                .andExpect(jsonPath(JsonPaths.DATA, nullValue()))
+        ;
+    }
+
+    @Test
+    public void createTestFailWithResultFalse() throws Exception {
+        when(stockService.create(Matchers.any(Stock.class))).thenReturn(false);
+        String requestBody = mapper.writeValueAsString(id1Feature);
+
+        mockMvcFail.perform(post(PATH)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+                .andExpect(jsonPath(JsonPaths.STATUS_CODE, equalTo(HttpURLConnection.HTTP_BAD_REQUEST)))
+                .andExpect(jsonPath(JsonPaths.DATA, nullValue()))
+                .andExpect(jsonPath(JsonPaths.ERROR_MSG,
+                        containsString("Could not create Stock")))
+        ;
+    }
+
+    @Test
+    public void createTestException() throws Exception {
+        when(stockService.create(Matchers.any(Stock.class))).thenThrow(new RuntimeException());
+        String requestBody = mapper.writeValueAsString(id1Stock);
+
+        mockMvcFail.perform(post(PATH)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+                .andExpect(jsonPath(JsonPaths.STATUS_CODE, equalTo(HttpURLConnection.HTTP_INTERNAL_ERROR)))
+                .andExpect(jsonPath(JsonPaths.DATA, nullValue()))
+                .andExpect(jsonPath(JsonPaths.ERROR_MSG,
+                        containsString("Exception while trying to create Stock")))
+        ;
+    }
