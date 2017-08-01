@@ -1,0 +1,88 @@
+public class StockServiceTest extends BaseTest {
+
+    private static final long REJECTED_STATUS_ID = 2765L;
+
+    private Stock stock = DummyEntities.getStock();
+    private Stock id1Stock = DummyEntities.getId1Stock();
+
+    @Autowired
+    private StockService stockService;
+
+    @Before
+    public void before() {
+        populateDB();
+    }
+
+    @Test
+    public void allowEditTest() {
+        assertTrue(stockService.allowEdit(LONG_ID1));
+    }
+
+    @Test
+    public void allowEditTest_NullFeature() {
+        final long id = WRONG_ID;
+        thrown.expect(LincolnRuntimeException.class);
+        thrown.expect(hasProperty(ERROR_RESPONSE_MSG, is("This stock not allow to be edit " +
+                id + ", status is not right!")));
+        stockService.allowEdit(id);
+    }
+
+    @Test
+    public void allowEditTest_WrongStatus() {
+        final long id = REJECTED_STATUS_ID;
+        thrown.expect(LincolnRuntimeException.class);
+        thrown.expect(hasProperty(ERROR_RESPONSE_MSG, is("This stock not allow to be edit " +
+                id + ", status is not right!")));
+        stockService.allowEdit(id);
+    }
+
+    @Test
+    public void allowDeleteTest_True() {
+        assertTrue(stockService.allowDelete(WRONG_ID));
+    }
+
+    @Test
+    public void allowDeleteTest_False() {
+        assertFalse(stockService.allowDelete(LONG_ID1));
+    }
+
+    @Test
+    @Transactional
+    public void createTest() {
+        assertTrue(stockService.create(stock));
+        assertEquals(stockCount + 1, stockDao.findAll().size());
+        assertNotNull(feature.getId());
+
+        Stock createdStock = stockDao.selectById(feature.getId());
+        assertNotNull(createdStock);
+        assertStocksFieldsEqual(createdStock, stock);
+    }
+
+    @Test
+    public void getByNameTest() {
+        Stock stock = stockService.getByName(id1Stock.getName());
+        assertNotNull(stock);
+        assertFeaturesFieldsEqual(id1Stock, stock);
+    }
+}
+
+
+@Configuration
+public class DummyEntities implements TestConstants {
+
+    private static Logger LOGGER = LoggerFactory.getLogger(DummyEntities.class);
+    private static SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+
+    public static Stock getStock() {
+        Stock stock = new Stock();
+        stock.setStock(NEW_NAME);
+        stock.setCreatedBy(TEST);
+        stock.setUpdatedBy(TEST);
+
+        return stock;
+    }
+
+}
+
+
+
